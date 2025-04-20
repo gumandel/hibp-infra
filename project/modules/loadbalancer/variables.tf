@@ -1,9 +1,9 @@
 variable "vpc_id" {
-    type = string
+  type = string
 }
 variable "sn_pub01" {
-    type = string
+  type = string
 }
 variable "sn_pub02" {
-    type = string
+  type = string
 }
