@@ -49,6 +49,7 @@ resource "aws_instance" "hibp_nginx_ec2" {
   ami                    = data.aws_ami.imagem_ec2_loadbalancer.id
   subnet_id              = var.sn_pub01
   vpc_security_group_ids = [aws_security_group.hibp_nginx_sg.id]
+  key_name               = "hibp-keypair" 
 
   associate_public_ip_address = true
   tags = {

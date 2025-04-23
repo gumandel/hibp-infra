@@ -13,6 +13,7 @@ resource "aws_instance" "frontend" {
   instance_type = "t3.micro"
   subnet_id     = var.public_subnets[count.index % length(var.public_subnets)] # Distribui as EC2s em diferentes subnets, para diferentes AZs
   tags          = { Name = "hibp-frontend-${count.index}" }
+  key_name      = "hibp-keypair" 
 }
 
 resource "aws_instance" "backend" {
@@ -21,4 +22,5 @@ resource "aws_instance" "backend" {
   instance_type = "t3.small"
   subnet_id     = var.private_subnets[count.index % length(var.private_subnets)]
   tags          = { Name = "hibp-backend-${count.index}" }
+  key_name      = "hibp-keypair" 
 }
