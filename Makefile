@@ -1,6 +1,6 @@
 # Configurações
-BUCKET_NAME ?= hibp-infra-terraform-state
-AWS_REGION ?= us-west-1
+BUCKET_NAME ?= hibp-infra-terraform-state1
+AWS_REGION ?= us-west-2
 
 # Verifica e cria o bucket S3 se não existir
 init-bucket:
