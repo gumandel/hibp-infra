@@ -39,10 +39,19 @@ resource "aws_db_instance" "postgres" {
   db_name             = "hibp_db"
   username            = local.db_credentials.username
   password            = local.db_credentials.password
+  backup_retention_period = 7
   skip_final_snapshot = true  # Se false, cria um backup automático antes de dar destroy (ativar em produção)
   multi_az            = false # Ativar em produção
   db_subnet_group_name = aws_db_subnet_group.postgres.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id] # Usa o SG criado acima
+}
+
+resource "aws_db_instance" "replica" {
+  replicate_source_db = aws_db_instance.postgres.identifier
+  instance_class = "db.t3.micro"
+  availability_zone = "us-west-2b" # AZ diferente da primeira
+  skip_final_snapshot = true
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
 }
 
 data "aws_secretsmanager_secret_version" "db_creds" {
