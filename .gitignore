@@ -1,3 +1,5 @@
 /project/.terraform/modules
 /project/.terraform/providers
+/structure/.terraform/
+/structure/terraform.tfstate.backup
 .terraform.lock.hcl
