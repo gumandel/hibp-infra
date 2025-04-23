@@ -22,5 +22,7 @@ resource "aws_instance" "backend" {
   instance_type = "t3.small"
   subnet_id     = var.private_subnets[count.index % length(var.private_subnets)]
   tags          = { Name = "hibp-backend-${count.index}" }
-  key_name      = "hibp-keypair" 
+  key_name      = "hibp-keypair"
+  
+  associate_public_ip_address = true 
 }
