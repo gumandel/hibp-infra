@@ -4,17 +4,17 @@ resource "aws_security_group" "rds_sg" {
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port   = 5432  # Porta padrão do PostgreSQL
+    from_port   = 5432 # Porta padrão do PostgreSQL
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]  # Restringe ao CIDR da VPC
+    cidr_blocks = [var.vpc_cidr] # Restringe ao CIDR da VPC
   }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]  # Libera saída para qualquer lugar
+    cidr_blocks = ["0.0.0.0/0"] # Libera saída para qualquer lugar
   }
 
   tags = {
@@ -32,25 +32,25 @@ resource "aws_db_subnet_group" "postgres" {
 }
 
 resource "aws_db_instance" "postgres" {
-  allocated_storage   = 20
-  engine              = "postgres"
-  engine_version      = "17.4"
-  instance_class      = "db.t3.micro"
-  db_name             = "hibp_db"
-  username            = local.db_credentials.username
-  password            = local.db_credentials.password
+  allocated_storage       = 20
+  engine                  = "postgres"
+  engine_version          = "17.4"
+  instance_class          = "db.t3.micro"
+  db_name                 = "hibp_db"
+  username                = local.db_credentials.username
+  password                = local.db_credentials.password
   backup_retention_period = 7
-  skip_final_snapshot = true  # Se false, cria um backup automático antes de dar destroy (ativar em produção)
-  multi_az            = false # Ativar em produção
-  db_subnet_group_name = aws_db_subnet_group.postgres.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id] # Usa o SG criado acima
+  skip_final_snapshot     = true  # Se false, cria um backup automático antes de dar destroy (ativar em produção)
+  multi_az                = false # Ativar em produção
+  db_subnet_group_name    = aws_db_subnet_group.postgres.name
+  vpc_security_group_ids  = [aws_security_group.rds_sg.id] # Usa o SG criado acima
 }
 
 resource "aws_db_instance" "replica" {
-  replicate_source_db = aws_db_instance.postgres.identifier
-  instance_class = "db.t3.micro"
-  availability_zone = "us-west-2b" # AZ diferente da primeira
-  skip_final_snapshot = true
+  replicate_source_db    = aws_db_instance.postgres.identifier
+  instance_class         = "db.t3.micro"
+  availability_zone      = "us-west-2b" # AZ diferente da primeira
+  skip_final_snapshot    = true
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 }
 

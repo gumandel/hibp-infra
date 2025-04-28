@@ -7,3 +7,8 @@ variable "project_name" {
   type    = string
   default = "hibp-infra"
 }
+
+variable "environment" {
+  type    = string
+  default = "prod"
+}
