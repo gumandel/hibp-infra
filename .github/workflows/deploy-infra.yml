@@ -10,7 +10,8 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout
+      # 1. Checkout e configuração inicial
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
@@ -20,79 +21,60 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.5.7"
+      - name: Setup Terraform and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+        shell: bash
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: project/modules/loadbalancer
-
-      - name: Get Subnet ID
-        id: get_subnet
+      # 2. Aplicar módulo VPC primeiro
+      - name: Initialize and Apply VPC Module
         run: |
           cd project/modules/vpc
-          echo "sn_pub01_id=$(terraform output -raw sn_pub01_id)" >> $GITHUB_OUTPUT
-        shell: bash
-      
-      - name: Show Subnet ID
+          terraform init
+          terraform apply -auto-approve
+
+      # 3. Aplicar módulo Load Balancer
+      - name: Initialize and Apply Load Balancer
         run: |
-          echo "Subnet ID: ${{ steps.get_subnet.outputs.sn_pub01_id }}"
+          cd project/modules/loadbalancer
+          terraform init
+          terraform apply -auto-approve
 
-      - name: Terraform Plan
-        run: terraform plan -no-color -out=tfplan
-        working-directory: project/modules/loadbalancer
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-        working-directory: project/modules/loadbalancer
-
-      - name: Generate Nginx Config
-        id: nginx_config
+      # 4. Configurar Nginx dinamicamente
+      - name: Configure Nginx
         run: |
+          # Obter IPs das instâncias
           cd project/modules/compute
-          echo "frontend_private_ips=$(terraform output -json frontend_private_ips)" >> $GITHUB_OUTPUT
-          echo "backend_private_ips=$(terraform output -json backend_private_ips)" >> $GITHUB_OUTPUT
+          FRONTEND_IPS=$(terraform output -json frontend_private_ips | jq -r '.[]')
+          BACKEND_IPS=$(terraform output -json backend_private_ips | jq -r '.[]')
+          NGINX_INSTANCE_ID=$(cd ../loadbalancer && terraform output -raw nginx_instance_id)
 
-          - name: Deploy Nginx Config
-          run: |
-            cat > nginx.conf <<EOF
-            upstream frontend {
-                ${{
-                  join(
-                    '\n        server ',
-                    fromJson(steps.nginx_config.outputs.frontend_ips)
-                  )
-                }}
-            }
-            upstream backend {
-                ${{
-                  join(
-                    '\n        server ',
-                    fromJson(steps.nginx_config.outputs.backend_ips)
-                  )
-                }}
-            }
-            server {
-                listen 80;
-                location / {
-                    proxy_pass http://frontend;
-                }
-                location /api/ {
-                    proxy_pass http://backend;
-                }
-            }
-            EOF
-        
-            aws ssm send-command \
-              --instance-ids $(cd project/modules/loadbalancer && terraform output -raw nginx_instance_id) \
-              --document-name "AWS-RunShellScript" \
-              --parameters 'commands=[
-                "echo '$nginx_conf' > /tmp/nginx.conf",
-                "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf",
-                "sudo systemctl restart nginx"
-              ]' \
-              --cli-binary-format raw-in-base64-out
-          env:
-            nginx_conf: $(cat nginx.conf)
+          # Gerar arquivo de configuração
+          cat > nginx.conf <<EOF
+          upstream frontend {
+              ${echo "$FRONTEND_IPS" | sed 's/^/server /; s/$/;/'}
+          }
+          upstream backend {
+              ${echo "$BACKEND_IPS" | sed 's/^/server /; s/$/;/'}
+          }
+          server {
+              listen 80;
+              location / {
+                  proxy_pass http://frontend;
+              }
+              location /api/ {
+                  proxy_pass http://backend;
+              }
+          }
+          EOF
+
+          # Enviar configuração para a instância Nginx
+          aws ssm send-command \
+            --instance-ids "$NGINX_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf",
+              "sudo systemctl restart nginx"
+            ]' \
+            --cli-binary-format raw-in-base64-out
