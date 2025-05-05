@@ -17,3 +17,8 @@ output "backend_instance_ids" {
   description = "Lista de IDs das instâncias EC2s backend"
   value       = module.frontend_backend.backend_instance_ids
 }
+
+output "nginx_public_ip" {
+  description = "IP público da instância nginx"
+  value       = module.loadbalancer.nginx_ec2_public_ip
+}

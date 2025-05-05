@@ -8,6 +8,11 @@ output "backend_public_ips" {
   value       = aws_instance.backend[*].public_ip
 }
 
+output "frontend_private_ips" {
+  description = "Lista de IPs privados das instâncias backend"
+  value       = aws_instance.frontend[*].private_ip
+}
+
 output "backend_private_ips" {
   description = "Lista de IPs privados das instâncias backend"
   value       = aws_instance.backend[*].private_ip

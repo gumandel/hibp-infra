@@ -7,7 +7,6 @@ data "aws_ami" "imagem_ec2_loadbalancer" {
   }
 }
 
-
 resource "aws_security_group" "hibp_nginx_sg" {
   vpc_id = var.vpc_id
   name   = "hibp_nginx_sg"
@@ -59,4 +58,9 @@ resource "aws_instance" "hibp_nginx_ec2" {
   # lifecycle {
   #   create_before_destroy = true # Garante que a nova instância esteja ativa antes de remover a antiga
   # }
+}
+
+resource "aws_eip" "hibp-nginx-eip" {
+  instance = aws_instance.hibp_nginx_ec2.id
+  domain   = "vpc"
 }
