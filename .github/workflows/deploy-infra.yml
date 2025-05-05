@@ -14,6 +14,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 2. Configurar AWS
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -21,36 +22,48 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Setup Terraform and jq
+      # 3. Instalar dependências do sistema (agora como passo SEPARADO)
+      - name: Install System Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
+          sudo apt-get update -y
+          sudo apt-get install -y jq curl unzip
         shell: bash
 
-      # 2. Aplicar módulo VPC primeiro
+      # 4. Instalar Terraform (usando a action oficial)
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"  # Altere para sua versão
+          terraform_wrapper: false    # Opcional: desativa wrappers extras
+
+      # 5. Aplicar módulos (agora com verificação explícita)
       - name: Initialize and Apply VPC Module
         run: |
           cd project/modules/vpc
-          terraform init
-          terraform apply -auto-approve
+          terraform init -no-color
+          terraform validate
+          terraform apply -auto-approve -no-color
+        shell: bash
 
-      # 3. Aplicar módulo Load Balancer
+      # 6. Aplicar Load Balancer
       - name: Initialize and Apply Load Balancer
         run: |
           cd project/modules/loadbalancer
-          terraform init
-          terraform apply -auto-approve
+          terraform init -no-color
+          terraform validate
+          terraform apply -auto-approve -no-color
+        shell: bash
 
-      # 4. Configurar Nginx dinamicamente
+      # 7. Configurar Nginx (com tratamento de erros)
       - name: Configure Nginx
         run: |
-          # Obter IPs das instâncias
+          set -e  # Sai no primeiro erro
+
           cd project/modules/compute
           FRONTEND_IPS=$(terraform output -json frontend_private_ips | jq -r '.[]')
           BACKEND_IPS=$(terraform output -json backend_private_ips | jq -r '.[]')
-          NGINX_INSTANCE_ID=$(cd ../loadbalancer && terraform output -raw nginx_instance_id)
+          NGINX_ID=$(cd ../loadbalancer && terraform output -raw nginx_instance_id)
 
-          # Gerar arquivo de configuração
           cat > nginx.conf <<EOF
           upstream frontend {
               ${echo "$FRONTEND_IPS" | sed 's/^/server /; s/$/;/'}
@@ -69,12 +82,12 @@ jobs:
           }
           EOF
 
-          # Enviar configuração para a instância Nginx
           aws ssm send-command \
-            --instance-ids "$NGINX_INSTANCE_ID" \
+            --instance-ids "$NGINX_ID" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf",
+              "sudo cp /tmp/nginx.conf /etc/nginx/nginx.conf",
               "sudo systemctl restart nginx"
             ]' \
             --cli-binary-format raw-in-base64-out
+        shell: bash
