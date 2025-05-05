@@ -32,7 +32,7 @@ jobs:
       - name: Get Subnet ID
         id: get_subnet
         run: |
-          cd modules/vpc
+          cd project/modules/vpc
           echo "sn_pub01_id=$(terraform output -raw sn_pub01_id)" >> $GITHUB_OUTPUT
         shell: bash
       
