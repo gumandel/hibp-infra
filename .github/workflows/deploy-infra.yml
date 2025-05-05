@@ -1,0 +1,76 @@
+name: Deploy Nginx Load Balancer
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Apply
+        run: |
+          cd project/modules/loadbalancer
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Generate Nginx Config
+        id: nginx_config
+        run: |
+          cd project/modules/compute
+          echo "frontend_private_ips=$(terraform output -json frontend_private_ips)" >> $GITHUB_OUTPUT
+          echo "backend_private_ips=$(terraform output -json backend_private_ips)" >> $GITHUB_OUTPUT
+
+          - name: Deploy Nginx Config
+          run: |
+            cat > nginx.conf <<EOF
+            upstream frontend {
+                ${{
+                  join(
+                    '\n        server ',
+                    fromJson(steps.nginx_config.outputs.frontend_ips)
+                  )
+                }}
+            }
+            upstream backend {
+                ${{
+                  join(
+                    '\n        server ',
+                    fromJson(steps.nginx_config.outputs.backend_ips)
+                  )
+                }}
+            }
+            server {
+                listen 80;
+                location / {
+                    proxy_pass http://frontend;
+                }
+                location /api/ {
+                    proxy_pass http://backend;
+                }
+            }
+            EOF
+        
+            aws ssm send-command \
+              --instance-ids $(cd project/modules/loadbalancer && terraform output -raw nginx_instance_id) \
+              --document-name "AWS-RunShellScript" \
+              --parameters 'commands=[
+                "echo '$nginx_conf' > /tmp/nginx.conf",
+                "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf",
+                "sudo systemctl restart nginx"
+              ]' \
+              --cli-binary-format raw-in-base64-out
+          env:
+            nginx_conf: $(cat nginx.conf)
