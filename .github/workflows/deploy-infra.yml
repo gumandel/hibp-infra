@@ -29,9 +29,16 @@ jobs:
         run: terraform init
         working-directory: project/modules/loadbalancer
 
+      - name: Get Subnet ID
+        id: get_subnet
+        run: |
+          cd modules/vpc
+          echo "sn_pub01_id=$(terraform output -raw sn_pub01_id)" >> $GITHUB_OUTPUT
+        shell: bash
+      
       - name: Show Subnet ID
         run: |
-          echo "Subnet ID: ${{ steps.vpc_outputs.outputs.sn_pub01_id }}"
+          echo "Subnet ID: ${{ steps.get_subnet.outputs.sn_pub01_id }}"
 
       - name: Terraform Plan
         run: terraform plan -no-color -out=tfplan
