@@ -29,11 +29,13 @@ jobs:
         run: terraform init
         working-directory: project/modules/loadbalancer
 
+      - name: Terraform Plan
+        run: terraform plan
+        working-directory: project/modules/loadbalancer
+
       - name: Terraform Apply
-        run: |
-          cd project/modules/loadbalancer
-          terraform init
-          terraform apply -auto-approve
+        run: terraform apply -auto-approve
+        working-directory: project/modules/loadbalancer
 
       - name: Generate Nginx Config
         id: nginx_config
