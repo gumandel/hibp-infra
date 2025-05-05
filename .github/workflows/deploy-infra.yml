@@ -27,7 +27,7 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: project/modules/loadbalancer]
+        working-directory: project/modules/loadbalancer
 
       - name: Show Subnet ID
         run: |
