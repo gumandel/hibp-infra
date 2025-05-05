@@ -33,12 +33,12 @@ jobs:
         id: get_subnet
         run: |
           cd project/modules/vpc
-          echo "sn_pub01_id=$(terraform output -raw sn_pub01)" >> $GITHUB_OUTPUT
+          echo "sn_pub01_id=$(terraform output -raw sn_pub01_id)" >> $GITHUB_OUTPUT
         shell: bash
       
       - name: Show Subnet ID
         run: |
-          echo "Subnet ID: ${{ steps.get_subnet.outputs.sn_pub01 }}"
+          echo "Subnet ID: ${{ steps.get_subnet.outputs.sn_pub01_id }}"
 
       - name: Terraform Plan
         run: terraform plan -no-color -out=tfplan

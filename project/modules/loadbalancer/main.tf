@@ -37,7 +37,7 @@ resource "aws_vpc_security_group_ingress_rule" "hibp_ingress_22_sg_rule" {
 }
 
 resource "aws_network_interface" "hibp_nginx_ei" {
-  subnet_id = var.sn_pub01
+  subnet_id = var.sn_pub01_id
   tags = {
     Name = "hibp_nginx_ei"
   }
@@ -46,7 +46,7 @@ resource "aws_network_interface" "hibp_nginx_ei" {
 resource "aws_instance" "hibp_nginx_ec2" {
   instance_type          = "t3.micro"
   ami                    = data.aws_ami.imagem_ec2_loadbalancer.id
-  subnet_id              = var.sn_pub01
+  subnet_id              = var.sn_pub01_id
   vpc_security_group_ids = [aws_security_group.hibp_nginx_sg.id]
   key_name               = "hibp-keypair"
 
