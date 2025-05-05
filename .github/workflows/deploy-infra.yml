@@ -27,10 +27,14 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: project/modules/loadbalancer
+        working-directory: project/modules/loadbalancer]
+
+      - name: Show Subnet ID
+        run: |
+          echo "Subnet ID: ${{ steps.vpc_outputs.outputs.sn_pub01_id }}"
 
       - name: Terraform Plan
-        run: terraform plan
+        run: terraform plan -no-color -out=tfplan
         working-directory: project/modules/loadbalancer
 
       - name: Terraform Apply
